@@ -1,0 +1,6 @@
+*.out
+*.vcd
+*.raw
+__pycache__/
+.DS_Store
+simulation/waveform.txt

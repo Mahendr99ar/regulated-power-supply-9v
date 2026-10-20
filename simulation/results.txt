@@ -1,0 +1,5 @@
+input ripple (V p-p): 1.64667
+regulator input min (V): 12.6168
+output average (V): 9
+output minimum (V): 9
+load current (A): 0.5

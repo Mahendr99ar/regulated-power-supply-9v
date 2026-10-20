@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>9 V Regulated Supply</title>
+<meta name="description" content="A 230 V AC to 9 V DC linear power supply with a live waveform explorer: change the filter capacitor, load and mains voltage and watch the ripple.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&family=Sofia+Sans+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --meter: #F2C230;       /* multimeter-body yellow */
+    --meter-deep: #C99A12;
+    --charcoal: #2A2E33;
+    --page: #F4F5F7;
+    --paper: #FFFFFF;
+    --ink: #1E2226;
+    --muted: #5B636B;
+    --rule: #DADDE2;
+    --secondary: #9AA0A6;   /* raw rectified wave */
+    --danger: #C0392B;      /* dropout line */
+    --ok: #1E7A46;
+    --body: "Sofia Sans", system-ui, sans-serif;
+    --cond: "Sofia Sans Condensed", "Arial Narrow", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 400 17px/1.6 var(--body); }
+  a { color: var(--ink); text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--charcoal); outline-offset: 2px; }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- Hero: yellow instrument body, white scope screen ---------- */
+  .hero { background: var(--meter); padding: 44px 0 52px; border-bottom: 6px solid var(--charcoal); }
+  .hero-head { display: flex; justify-content: space-between; align-items: end; gap: 24px; flex-wrap: wrap; margin-bottom: 24px; }
+  h1 { font: 800 clamp(42px, 6.4vw, 78px)/0.92 var(--cond); margin: 0; letter-spacing: -0.01em; color: var(--charcoal); }
+  .lede { font-size: 19px; max-width: 46ch; margin: 12px 0 0; color: #3A3418; }
+  .credit { font-size: 15px; margin: 0; text-align: right; color: #3A3418; }
+  .credit strong { color: var(--charcoal); }
+
+  .instrument { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; }
+  .screen { background: var(--paper); border: 3px solid var(--charcoal); border-radius: 10px; padding: 14px 16px 10px; }
+  .screen canvas { width: 100%; height: 330px; display: block; }
+  .key { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); margin-top: 6px; }
+  .key i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; }
+
+  .side { background: var(--charcoal); color: #EDEFF2; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .lcd { background: #C9D3B6; color: #1C2414; border-radius: 6px; padding: 10px 12px; font: 700 15px/1.3 var(--cond); }
+  .lcd b { display: block; font-size: 34px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .lcd .row { display: flex; justify-content: space-between; gap: 10px; }
+  .badge { display: inline-block; font: 700 15px/1 var(--cond); padding: 7px 10px; border-radius: 4px; }
+  .badge.ok { background: #CDEBD8; color: #0F4A27; }
+  .badge.bad { background: #F6D2CD; color: #7E1E14; }
+  .side label { font: 600 15px var(--body); display: block; }
+  .side output { float: right; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--meter); }
+  input[type=range] { width: 100%; accent-color: var(--meter); }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .presets button {
+    font: 600 14px/1 var(--body); padding: 9px 11px; border-radius: 4px; cursor: pointer;
+    border: 1.5px solid var(--meter); background: transparent; color: var(--meter);
+  }
+  .presets button:hover { background: rgba(242,194,48,.12); }
+  .explain { font-size: 14px; color: #C7CCD2; margin: 0; }
+
+  /* ---------- Body ---------- */
+  main section { padding: 60px 0 0; }
+  .col { max-width: 760px; }
+  h2 { font: 800 38px/1.05 var(--cond); margin: 0 0 14px; color: var(--charcoal); }
+  h3 { font: 700 22px/1.2 var(--cond); margin: 24px 0 8px; }
+  p { margin: 0 0 16px; }
+  .chain { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; margin-top: 14px; }
+  .stage { background: var(--paper); border: 1px solid var(--rule); border-left: none; padding: 14px 14px 16px; position: relative; }
+  .stage:first-child { border-left: 1px solid var(--rule); border-radius: 8px 0 0 8px; }
+  .stage:last-child { border-radius: 0 8px 8px 0; }
+  .stage h3 { margin: 0 0 4px; font-size: 20px; }
+  .stage .v { font: 800 26px/1 var(--cond); color: var(--meter-deep); margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+  .stage p { font-size: 15px; color: var(--muted); margin: 0; }
+  .stage:not(:last-child)::after {
+    content: ""; position: absolute; right: -9px; top: 26px; width: 16px; height: 16px; background: var(--paper);
+    border-top: 1px solid var(--rule); border-right: 1px solid var(--rule); transform: rotate(45deg); z-index: 1;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 16px; margin-top: 6px; }
+  th, td { text-align: left; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font: 700 16px var(--cond); }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+  figure { margin: 22px 0 0; }
+  figure img { width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 8px; background: #fff; }
+  figcaption { font-size: 15px; color: var(--muted); margin-top: 8px; max-width: 72ch; }
+  .warn { border-left: 5px solid var(--danger); background: #F8E2DF; padding: 14px 18px; margin-top: 18px; }
+  .note { border-left: 5px solid var(--meter-deep); background: #FBF0CC; padding: 14px 18px; margin-top: 18px; }
+  code { font-size: .92em; }
+  footer { margin-top: 72px; padding: 28px 0 44px; border-top: 1px solid var(--rule); font-size: 15px; color: var(--muted); }
+
+  @media (max-width: 960px) {
+    .instrument { grid-template-columns: 1fr; }
+    .credit { text-align: left; }
+    .chain { grid-template-columns: 1fr; }
+    .stage, .stage:first-child, .stage:last-child { border: 1px solid var(--rule); border-radius: 0; border-top: none; }
+    .stage:first-child { border-top: 1px solid var(--rule); border-radius: 8px 8px 0 0; }
+    .stage:last-child { border-radius: 0 0 8px 8px; }
+    .stage:not(:last-child)::after { right: auto; left: 24px; top: auto; bottom: -9px; transform: rotate(135deg); }
+  }
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 14px; }
+    .screen canvas { height: 250px; }
+    td.num { white-space: normal; }
+    th, td { font-size: 15px; padding-right: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-head">
+      <div>
+        <h1>230 V AC to 9 V DC<br>regulated supply</h1>
+        <p class="lede">Transformer, bridge rectifier, filter capacitor and LM7809. Change the parts below and watch how much ripple reaches the regulator.</p>
+      </div>
+      <p class="credit">Built by <strong>Mahendra Meena</strong> and <strong>Kiran Meena</strong><br>B.Tech EEE, IIIT Gwalior<br><a href="https://github.com/Mahendr99ar/regulated-power-supply-9v">Source code on GitHub</a></p>
+    </div>
+
+    <div class="instrument">
+      <div class="screen">
+        <canvas id="scope" role="img" aria-label="Waveforms over two mains cycles: rectified secondary, filter capacitor voltage, regulator output and the 11 volt minimum line"></canvas>
+        <div class="key">
+          <span><i style="background:var(--secondary)"></i>Rectified secondary</span>
+          <span><i style="background:var(--charcoal)"></i>Filter capacitor (regulator input)</span>
+          <span><i style="background:var(--meter-deep)"></i>9 V output</span>
+          <span><i style="background:var(--danger)"></i>11 V minimum for the LM7809</span>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="lcd" aria-live="polite">
+          <div class="row"><span>Ripple<b id="r-rip">0.00 V</b></span><span>Lowest input<b id="r-min">0.0 V</b></span></div>
+          <div class="row" style="margin-top:6px"><span>Output<b id="r-out">9.00 V</b></span><span>LM7809 heat<b id="r-heat">0.0 W</b></span></div>
+        </div>
+        <span class="badge ok" id="status">Regulating</span>
+        <label for="cap">Filter capacitor <output id="cap-out" for="cap">2200 µF</output>
+          <input id="cap" type="range" min="0" max="6" step="1" value="3"></label>
+        <label for="load">Load current <output id="load-out" for="load">500 mA</output>
+          <input id="load" type="range" min="50" max="1000" step="10" value="500"></label>
+        <label for="mains">Mains voltage <output id="mains-out" for="mains">230 V</output>
+          <input id="mains" type="range" min="190" max="250" step="1" value="230"></label>
+        <div class="presets" role="group" aria-label="Presets">
+          <button type="button" data-c="3" data-l="500" data-m="230">Our design</button>
+          <button type="button" data-c="0" data-l="500" data-m="230">Too-small capacitor</button>
+          <button type="button" data-c="3" data-l="500" data-m="195">Low mains</button>
+        </div>
+        <p class="explain" id="explain"></p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <div class="col">
+      <h2>From mains to a steady 9 V</h2>
+      <p>Each stage takes the voltage one step closer to clean DC. The numbers are peak values for our design at 500 mA.</p>
+    </div>
+    <div class="chain">
+      <div class="stage"><h3>Fuse</h3><div class="v">230 V AC</div><p>500 mA slow-blow on the primary cuts power if anything shorts.</p></div>
+      <div class="stage"><h3>Transformer</h3><div class="v">12 V AC</div><p>230 : 12 V, 1 A. Steps down and isolates you from mains. Peak 16.97 V.</p></div>
+      <div class="stage"><h3>Bridge rectifier</h3><div class="v">15.2 V peak</div><p>Four 1N4007s flip the negative half-cycles. Two diodes conduct, losing about 1.8 V.</p></div>
+      <div class="stage"><h3>Filter capacitor</h3><div class="v">12.6–14.3 V</div><p>2200 µF fills up at each peak and feeds the load in between. What's left is ripple.</p></div>
+      <div class="stage"><h3>LM7809</h3><div class="v">9.00 V DC</div><p>Burns off the difference as heat, as long as its input stays above 11 V.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="col">
+      <h2>Sizing the filter capacitor</h2>
+      <p>The LM7809 needs about 2 V of headroom, so its input must never dip below 11 V. That sets how much ripple we can allow, and the ripple sets the capacitor.</p>
+      <table>
+        <thead><tr><th>Step</th><th>Working</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Secondary peak</td><td>12 V × √2</td><td class="num">16.97 V</td></tr>
+          <tr><td>After two diodes</td><td>16.97 − 2 × 0.9</td><td class="num">15.17 V</td></tr>
+          <tr><td>Ripple allowed</td><td>15.17 − 11.0</td><td class="num">4.17 V p-p</td></tr>
+          <tr><td>Minimum capacitor</td><td>C = I / (2fΔV) = 0.5 / (100 × 4.17)</td><td class="num">1199 µF</td></tr>
+          <tr><td>Chosen, with 50 % margin</td><td>Next standard value</td><td class="num">2200 µF, 25 V</td></tr>
+          <tr><td>Regulator heat at 500 mA</td><td>(V<sub>in,avg</sub> − 9) × I</td><td class="num">~2.5 W, needs a heat sink</td></tr>
+        </tbody>
+      </table>
+      <h3>Known limit</h3>
+      <p>At full 500 mA load the supply holds 9 V down to about 207 V mains. Try the "Low mains" preset: at 195 V the capacitor dips under 11 V and ripple reaches the output. A 15 V transformer or a low-dropout regulator would fix this, at the cost of more heat or a pricier part.</p>
+    </div>
+    <figure>
+      <img src="assets/waveform.png" alt="ngspice waveforms over 40 ms: rectified secondary peaking near 16 V, filter capacitor rippling between 12.6 and 14.3 V, output flat at 9 V, 11 V threshold line" loading="lazy" width="1170" height="598">
+      <figcaption>Circuit simulation in ngspice with the real diode model: 1.65 V of ripple, lowest regulator input 12.6 V, output a flat 9.00 V at 0.50 A. The hand formula predicted 2.27 V because it assumes the capacitor discharges for the whole half-cycle, which is a safe worst case.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="col">
+      <h2>Parts</h2>
+      <table>
+        <thead><tr><th>Part</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>230 V / 12 V, 1 A transformer</td><td>Safe low voltage, galvanic isolation</td></tr>
+          <tr><td>5 × 1N4007</td><td>Four for the bridge, one across the LM7809 to protect it if the input is shorted</td></tr>
+          <tr><td>2200 µF / 25 V electrolytic</td><td>Main filter</td></tr>
+          <tr><td>LM7809 + TO-220 heat sink</td><td>Fixed 9 V regulation</td></tr>
+          <tr><td>0.33 µF in, 0.1 µF out</td><td>Keep the regulator stable</td></tr>
+          <tr><td>500 mA slow-blow fuse, red LED + 680 Ω</td><td>Protection and power-on indication</td></tr>
+        </tbody>
+      </table>
+      <p class="warn">The primary side carries 230 V mains. Insulate every mains joint, use a fused plug and an enclosure, and never touch the board while it is plugged in.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">Mahendra Meena (<a href="https://github.com/Mahendr99ar">@Mahendr99ar</a>) and Kiran Meena (<a href="https://github.com/Kirann260">@Kirann260</a>). Design script, ngspice model and notes on <a href="https://github.com/Mahendr99ar/regulated-power-supply-9v">GitHub</a>, MIT licence.</div>
+</footer>
+
+<script>
+/* Simplified version of simulation/psu_9v.cir: 0.5 ohm winding, 0.9 V per diode,
+   capacitor charged through the bridge and drained by the regulator's load current. */
+const CAPS = [470, 1000, 1500, 2200, 3300, 4700, 6800];
+const $ = id => document.getElementById(id);
+const cv = $("scope"), ctx = cv.getContext("2d");
+
+function simulate(capUF, loadA, mains) {
+  const C = capUF * 1e-6, pk = 16.97 * mains / 230, Rw = 0.5, Vd = 0.9, dt = 2e-5;
+  let vc = 0; const wave = [];
+  for (let t = 0; t < 0.2; t += dt) {
+    const rect = Math.abs(pk * Math.sin(2 * Math.PI * 50 * t));
+    const ic = Math.max(0, (rect - 2 * Vd - vc) / Rw);
+    const vout = Math.min(9, Math.max(0, vc - 2));
+    const iload = loadA * (vout / 9);                 // resistive load sags in dropout
+    vc += (ic - iload - 0.005 - vc / 4700) / C * dt;
+    if (t >= 0.16) wave.push([(t - 0.16) * 1000, rect, vc, Math.min(9, Math.max(0, vc - 2))]);
+  }
+  return wave;
+}
+
+function render() {
+  const capUF = CAPS[+$("cap").value], load = +$("load").value / 1000, mains = +$("mains").value;
+  $("cap-out").textContent = capUF + " µF";
+  $("load-out").textContent = Math.round(load * 1000) + " mA";
+  $("mains-out").textContent = mains + " V";
+
+  const w = simulate(capUF, load, mains);
+  const vcs = w.map(r => r[2]), outs = w.map(r => r[3]);
+  const vmin = Math.min(...vcs), vmax = Math.max(...vcs), omin = Math.min(...outs);
+  const vavg = vcs.reduce((a, b) => a + b, 0) / vcs.length;
+  const ok = vmin >= 11;
+
+  $("r-rip").textContent = (vmax - vmin).toFixed(2) + " V";
+  $("r-min").textContent = vmin.toFixed(1) + " V";
+  $("r-out").textContent = ok ? "9.00 V" : omin.toFixed(1) + "–9 V";
+  $("r-heat").textContent = Math.max(0, (vavg - 9) * load).toFixed(1) + " W";
+  const st = $("status");
+  st.className = "badge " + (ok ? "ok" : "bad");
+  st.textContent = ok ? "Regulating: output is flat 9 V" : "Dropout: 9 V output is rippling";
+  $("explain").textContent = ok
+    ? `The capacitor never falls below ${vmin.toFixed(1)} V, so the regulator always has its 2 V of headroom.`
+    : `The capacitor sags to ${vmin.toFixed(1)} V, under the 11 V the LM7809 needs, so ripple leaks through to the output. ${capUF < 2200 ? "Use a bigger capacitor." : ""}${mains < 205 ? " Low mains leaves too little margin." : ""}${load > 0.6 ? " Or reduce the load." : ""}`;
+
+  // ---- draw ----
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const L = 40, R = 24, T = 10, B = 28;
+  const x = ms => L + ms / 40 * (W - L - R), y = v => H - B - v / 20 * (H - T - B);
+  ctx.font = "13px 'Sofia Sans', sans-serif"; ctx.fillStyle = "#5B636B"; ctx.strokeStyle = "#E6E8EC"; ctx.lineWidth = 1;
+  for (let v = 0; v <= 20; v += 5) { ctx.beginPath(); ctx.moveTo(L, y(v)); ctx.lineTo(W - R, y(v)); ctx.stroke(); ctx.textAlign = "right"; ctx.fillText(v + " V", L - 6, y(v) + 4); }
+  for (let ms = 0; ms <= 40; ms += 10) { ctx.beginPath(); ctx.moveTo(x(ms), T); ctx.lineTo(x(ms), H - B); ctx.stroke(); ctx.textAlign = "center"; ctx.fillText(ms + " ms", x(ms), H - B + 18); }
+
+  const line = (idx, color, width, dash) => {
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []); ctx.beginPath();
+    w.forEach((r, k) => { if (k % 4) return; k ? ctx.lineTo(x(r[0]), y(r[idx])) : ctx.moveTo(x(r[0]), y(r[idx])); });
+    ctx.stroke(); ctx.setLineDash([]);
+  };
+  ctx.strokeStyle = "#C0392B"; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(L, y(11)); ctx.lineTo(W - R, y(11)); ctx.stroke(); ctx.setLineDash([]);
+  line(1, "#9AA0A6", 1.3, [5, 4]);
+  line(2, "#2A2E33", 2.4);
+  line(3, "#C99A12", 3);
+}
+
+["cap", "load", "mains"].forEach(id => $(id).addEventListener("input", render));
+document.querySelectorAll(".presets button").forEach(b => b.addEventListener("click", () => {
+  $("cap").value = b.dataset.c; $("load").value = b.dataset.l; $("mains").value = b.dataset.m; render();
+}));
+window.addEventListener("resize", render);
+render();
+</script>
+</body>
+</html>

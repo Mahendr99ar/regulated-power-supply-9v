@@ -1,0 +1,52 @@
+* 230 V AC -> 9 V DC linear supply (ngspice)
+* Transformer secondary modelled as a 12 V RMS, 50 Hz source with winding resistance.
+* LM7809 modelled behaviourally: Vout = min(9 V, Vin - 2 V dropout),
+* and it draws the load current (plus 5 mA quiescent) from the filter capacitor.
+*
+* Run from the repo folder:  ngspice -b simulation/psu_9v.cir
+* Writes simulation/waveform.txt (time, secondary, filter, output) for plot_waveform.py
+
+* ---- Transformer secondary ----
+Vsec  s1 s0 SIN(0 16.97 50)
+Rw    s0 s2 0.5
+
+* ---- Bridge rectifier, 1N4007 ----
+D1 s1  vin D1N4007
+D2 s2  vin D1N4007
+D3 0 s1  D1N4007
+D4 0 s2  D1N4007
+Rfloat s0 0 10Meg
+
+* ---- Filter ----
+Cf  vin 0 2200u IC=0
+Rbleed vin 0 4.7k
+
+* ---- LM7809 (behavioural) ----
+Breg  reg 0 V = min(9, max(0, v(vin) - 2))
+Vsense reg out 0
+Fdraw vin 0 Vsense 1
+Iq    vin 0 5m
+Cout  out 0 0.1u
+Rload out 0 18
+
+.model D1N4007 D(Is=7.03n Rs=0.034 N=1.81 Cjo=10p Bv=1000)
+
+.control
+  set noaskquit
+  tran 50u 400m 0 50u
+  meas tran vin_max MAX v(vin) from=300m to=400m
+  meas tran vin_min MIN v(vin) from=300m to=400m
+  meas tran vout_avg AVG v(out) from=300m to=400m
+  meas tran vout_min MIN v(out) from=300m to=400m
+  meas tran iload AVG i(Vsense) from=300m to=400m
+  let ripple_in = vin_max - vin_min
+  echo "RESULT input ripple (V p-p): $&ripple_in"
+  echo "RESULT regulator input min (V): $&vin_min"
+  echo "RESULT output average (V): $&vout_avg"
+  echo "RESULT output minimum (V): $&vout_min"
+  echo "RESULT load current (A): $&iload"
+  set wr_singlescale
+  wrdata simulation/waveform.txt v(s1)-v(s2) v(vin) v(out)
+  quit
+.endc
+.end
